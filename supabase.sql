@@ -2,9 +2,9 @@
 --  EL BUZÓN REAL · Lista de regalos familiar
 --  Pégalo entero en Supabase → SQL Editor → Run.
 --  Antes de ejecutarlo, cambia:
---    Nada: contraseña y nombres ya están puestos al final.
---    (La contraseña se escribe siempre en minúsculas y sin tildes;
---     la web ya normaliza lo que escribe cada uno.)
+--    La contraseña (busca CAMBIA_ESTA_CONTRASEÑA, al final). Escríbela en
+--    minúsculas y sin tildes: la web normaliza lo que escribe cada uno.
+--    NO subas la contraseña real al repositorio.
 -- =====================================================================
 
 create extension if not exists pgcrypto with schema extensions;
@@ -167,7 +167,7 @@ grant execute on function public.buzon_unmark(text, int, bigint)           to an
 -- ---------- Datos iniciales (EDITA ESTO) ------------------------------
 
 insert into public.settings(id, password_hash)
-values (1, extensions.crypt('turron', extensions.gen_salt('bf')))
+values (1, extensions.crypt('CAMBIA_ESTA_CONTRASEÑA', extensions.gen_salt('bf')))
 on conflict (id) do update set password_hash = excluded.password_hash;
 
 -- Pon los nombres tal y como queréis que salgan en el desplegable.
