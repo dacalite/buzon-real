@@ -22,15 +22,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Generar config.js desde los secretos
+      - name: Preparar el sitio
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          test -n "$SUPABASE_URL" && test -n "$SUPABASE_ANON_KEY" || { echo "Faltan los secretos SUPABASE_URL / SUPABASE_ANON_KEY"; exit 1; }
           mkdir -p _site
-          cp index.html _site/
-          node -e 'process.stdout.write("window.BUZON_CONFIG = " + JSON.stringify({SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY}) + ";\n")' > _site/config.js
+          cp index.html config.js _site/
+          # Si hay secretos definidos en el repo, tienen prioridad sobre config.js
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            node -e 'process.stdout.write("window.BUZON_CONFIG = " + JSON.stringify({SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY}) + ";\n")' > _site/config.js
+          fi
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

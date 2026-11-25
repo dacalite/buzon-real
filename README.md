@@ -4,10 +4,11 @@ Lista de regalos familiar para Nochebuena. Cada uno apunta su carta y marca lo q
 
 - `index.html`: la web (estática, sin dependencias).
 - `supabase.sql`: tablas y funciones. Todo el acceso pasa por funciones que comprueban la contraseña; las tablas están cerradas a la clave anon.
-- `.github/workflows/pages.yml`: despliega en GitHub Pages y genera `config.js` con los secretos `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+- `config.js`: URL y clave anon (pública por diseño) del proyecto de Supabase.
+- `.github/workflows/pages.yml`: despliega en GitHub Pages. Si defines los secretos `SUPABASE_URL` y `SUPABASE_ANON_KEY`, sustituyen a `config.js`.
 
 ## Puesta en marcha
 1. Supabase → SQL Editor → pegar `supabase.sql` → Run.
-2. Repo → Settings → Secrets and variables → Actions: crear `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+2. Poner la URL y la clave anon en `config.js` (o como secretos del repo).
 3. Repo → Settings → Pages → Source: **GitHub Actions**.
 4. Lanzar el workflow (o hacer push a `main`).
