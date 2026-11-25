@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#101a4d">
+<title>El Buzón Real</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#101a4d; --navy-2:#1a2870; --red:#c8202f; --red-dark:#8f121c;
+    --gold:#f2bd3c; --gold-soft:#fff3cf; --cream:#fffaf0; --ink:#1d1b2e;
+    --muted:#6b6880; --line:#ebe4d3; --green:#1f8a52; --green-soft:#e3f5ea;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--ink); min-height:100vh;
+    background:
+      radial-gradient(1200px 600px at 50% -200px,#2b3f9e 0%,transparent 60%),
+      var(--navy);
+    background-attachment:fixed;
+    -webkit-font-smoothing:antialiased;
+  }
+  .stars{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 20px 30px,#fff8 50%,transparent 51%),
+      radial-gradient(1px 1px at 120px 80px,#fff9 50%,transparent 51%),
+      radial-gradient(2px 2px at 200px 160px,#ffe68088 50%,transparent 51%),
+      radial-gradient(1px 1px at 300px 40px,#fff7 50%,transparent 51%),
+      radial-gradient(1.5px 1.5px at 360px 220px,#fff6 50%,transparent 51%);
+    background-size:400px 260px;}
+  .wrap{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:20px 16px 60px}
+  header.brand{text-align:center;color:#fff;padding:18px 0 22px}
+  .brand .crown{font-size:42px;line-height:1;filter:drop-shadow(0 4px 10px #0006)}
+  .brand h1{font-family:Fraunces,Georgia,serif;font-weight:900;font-size:clamp(32px,9vw,46px);
+    margin:6px 0 2px;letter-spacing:.5px;
+    background:linear-gradient(180deg,#fff2a8,#f2bd3c 55%,#c98a12);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand p{margin:0;color:#c9d0f5;font-size:15px}
+  .card{background:var(--cream);border-radius:var(--radius);padding:20px;box-shadow:0 10px 30px #0005}
+  .card + .card{margin-top:14px}
+  h2{font-family:Fraunces,Georgia,serif;font-size:24px;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:15px;line-height:1.45}
+  label{display:block;font-weight:600;font-size:14px;margin:14px 0 6px}
+  label .opt{font-weight:400;color:var(--muted)}
+  input,select{width:100%;font:inherit;font-size:16px;padding:13px 14px;border-radius:12px;
+    border:1.5px solid var(--line);background:#fff;color:var(--ink);outline:none}
+  input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px #f2bd3c55}
+  .btn{appearance:none;border:0;font:inherit;font-weight:700;font-size:16px;cursor:pointer;
+    padding:13px 18px;border-radius:12px;background:var(--red);color:#fff;width:100%;margin-top:16px;
+    box-shadow:0 3px 0 var(--red-dark);transition:transform .05s}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--red-dark)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+  .btn.small{width:auto;margin:0;padding:9px 12px;font-size:14px;border-radius:10px}
+  .btn.green{background:var(--green);box-shadow:0 3px 0 #136338}
+  .error{color:var(--red);font-weight:600;font-size:14px;margin:10px 0 0;min-height:1em}
+  .honor{margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--gold-soft);font-size:14px;line-height:1.45}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff;margin-bottom:14px}
+  .topbar .hi{font-weight:700;font-size:17px}
+  .linkbtn{background:none;border:0;color:#c9d0f5;font:inherit;font-size:14px;text-decoration:underline;cursor:pointer;padding:6px}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;background:#ffffff1a;border-radius:14px;padding:4px;margin-bottom:14px}
+  .tabs button{border:0;background:none;color:#dfe3fb;font:inherit;font-weight:700;font-size:15px;padding:11px 6px;border-radius:11px;cursor:pointer}
+  .tabs button[aria-selected="true"]{background:var(--cream);color:var(--ink)}
+
+  .banner{border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.45;margin-bottom:14px}
+  .banner.gold{background:var(--gold-soft);border:2px solid var(--gold)}
+  .banner.red{background:#fde8ea;border:2px solid var(--red);}
+  .banner strong{display:block;font-size:16px;margin-bottom:2px}
+
+  details.person{background:var(--cream);border-radius:var(--radius);margin-bottom:12px;box-shadow:0 6px 20px #0004;overflow:hidden}
+  details.person > summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;align-items:center;gap:12px}
+  details.person > summary::-webkit-details-marker{display:none}
+  .avatar{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
+    background:var(--red);color:#fff;font-weight:800;font-size:18px;font-family:Fraunces,Georgia,serif}
+  .pinfo{flex:1;min-width:0}
+  .pname{font-weight:700;font-size:17px}
+  .pmeta{font-size:13px;color:var(--muted);margin-top:2px}
+  .bar{height:6px;border-radius:6px;background:var(--line);margin-top:7px;overflow:hidden}
+  .bar > i{display:block;height:100%;background:var(--green);border-radius:6px}
+  .chev{flex:none;transition:transform .2s;color:var(--muted);font-size:18px}
+  details[open] .chev{transform:rotate(90deg)}
+  .items{list-style:none;margin:0;padding:0 12px 12px}
+  .item{display:flex;gap:12px;align-items:flex-start;padding:13px 6px;border-top:1px solid var(--line)}
+  .item:first-child{border-top:0}
+  .item .txt{flex:1;min-width:0}
+  .item .iname{font-weight:600;font-size:16px;word-wrap:break-word}
+  .item .idet{font-size:14px;color:var(--muted);margin-top:2px;word-wrap:break-word}
+  .item a.ilink{display:inline-block;margin-top:5px;font-size:14px;font-weight:600;color:var(--navy-2);text-decoration:none}
+  .item a.ilink:hover{text-decoration:underline}
+  .item.done .iname{text-decoration:line-through;color:var(--muted)}
+  .act{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .act .linkbtn{color:var(--muted);font-size:13px;padding:2px 0}
+  .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+  .pill.done{background:#eceaf2;color:#5b5870}
+  .pill.mine{background:var(--green-soft);color:var(--green)}
+  .empty{padding:4px 18px 18px;color:var(--muted);font-size:15px}
+
+  .mylist{list-style:none;margin:0;padding:0}
+  .mylist .item{padding:12px 0}
+  .count{color:var(--muted);font-weight:500;font-size:15px}
+
+  .loading{color:#c9d0f5;text-align:center;padding:30px 0}
+  .modal-bg{position:fixed;inset:0;background:#0a0f2ecc;display:grid;place-items:center;padding:20px;z-index:20}
+  .modal{background:var(--cream);border-radius:18px;max-width:420px;width:100%;padding:22px;box-shadow:0 20px 50px #0008}
+  .modal h3{font-family:Fraunces,Georgia,serif;margin:0 0 8px;font-size:22px}
+  .modal p{margin:0 0 6px;line-height:1.5}
+  .modal .preview{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}
+  .modal .row{display:flex;gap:10px;margin-top:16px}
+  .modal .row .btn{margin:0}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:12px 16px;border-radius:12px;font-weight:600;font-size:15px;z-index:30;max-width:90vw;box-shadow:0 8px 24px #0006}
+  [hidden]{display:none !important}
+  footer{color:#8f97c7;text-align:center;font-size:13px;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="wrap">
+  <header class="brand">
+    <div class="crown">📮🎅</div>
+    <h1>El Buzón Real</h1>
+    <p>Nochebuena 2026 · Oficina de gestión de regalos</p>
+  </header>
+
+  <!-- 1. Contraseña -->
+  <section id="screen-login" class="card" hidden>
+    <h2>Acceso restringido</h2>
+    <p class="sub">Introduce la contraseña que el Paje Mayor ha compartido en el grupo.</p>
+    <form id="form-login" autocomplete="off">
+      <label for="pw">Contraseña</label>
+      <input id="pw" type="password" required autocomplete="current-password">
+      <button class="btn" type="submit">Entrar</button>
+      <p class="error" id="login-error"></p>
+    </form>
+  </section>
+
+  <!-- 2. ¿Quién eres? -->
+  <section id="screen-who" class="card" hidden>
+    <h2>¿Quién eres?</h2>
+    <p class="sub">Elige tu nombre para ver las cartas de los demás y escribir la tuya.</p>
+    <form id="form-who">
+      <select id="who" required><option value="">Elige tu nombre…</option></select>
+      <button class="btn" type="submit">Soy yo</button>
+    </form>
+    <div class="honor">🤞 <b>Sistema de honor.</b> Si eliges el nombre de otra persona para cotillear tu propia carta, el único que pierde la sorpresa eres tú.</div>
+  </section>
+
+  <!-- 3. Principal -->
+  <section id="screen-main" hidden>
+    <div class="topbar">
+      <div class="hi" id="hi"></div>
+      <button class="linkbtn" id="btn-switch" type="button">No soy yo</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-others" aria-selected="true" type="button">🎁 Los demás</button>
+      <button role="tab" id="tab-mine" aria-selected="false" type="button">✍️ Mi carta</button>
+    </div>
+
+    <div id="panel-others">
+      <div class="banner gold">
+        <strong>🛒 Márcalo en cuanto decidas comprarlo</strong>
+        No esperes a que te llegue el pedido, o alguien puede comprar lo mismo mientras tanto.
+        Si al final no llega o no lo vas a regalar, desmárcalo para que otra persona pueda comprarlo.
+      </div>
+      <div id="others"></div>
+    </div>
+
+    <div id="panel-mine" hidden>
+      <div class="banner red">
+        <strong>⚠️ Solo se puede AÑADIR, nunca borrar</strong>
+        Lo que añadas a tu carta no se puede borrar ni editar, porque alguien podría habértelo comprado ya.
+        Revisa bien el nombre, los detalles y el enlace antes de añadir.
+      </div>
+      <div class="card">
+        <h2>Añadir un regalo</h2>
+        <form id="form-add" autocomplete="off">
+          <label for="f-name">Regalo</label>
+          <input id="f-name" maxlength="120" required placeholder="Ej.: Zapatillas de running">
+          <label for="f-details">Detalles <span class="opt">(opcional: talla, color, modelo…)</span></label>
+          <input id="f-details" maxlength="200" placeholder="Ej.: Talla 43, en negro">
+          <label for="f-link">Enlace de referencia o de compra <span class="opt">(opcional)</span></label>
+          <input id="f-link" type="url" inputmode="url" maxlength="800" placeholder="https://…">
+          <button class="btn" type="submit">Añadir a mi carta</button>
+          <p class="error" id="add-error"></p>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Tu carta <span class="count" id="mine-count"></span></h2>
+        <p class="sub">Aquí no verás qué te han comprado. Ni lo intentes. 🎅</p>
+        <ul class="mylist" id="mine"></ul>
+      </div>
+    </div>
+  </section>
+
+  <div id="loading" class="loading">Cargando…</div>
+  <footer>Gestionado por el Paje Mayor · Interino, no remunerado</footer>
+</div>
+
+<div id="modal" class="modal-bg" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div class="row">
+      <button class="btn ghost" id="modal-cancel" type="button">Cancelar</button>
+      <button class="btn" id="modal-ok" type="button">Confirmar</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script>
+/* La configuración viene de config.js, que genera GitHub Actions con los secretos del repo. */
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.BUZON_CONFIG || {};
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem("buzon_" + k)); } catch { return null; } },
+  set(k, v){ try { localStorage.setItem("buzon_" + k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem("buzon_" + k); } catch {} },
+};
+
+let state = { pw: store.get("pw"), me: store.get("me"), members: [], board: null, tab: "others", open: new Set() };
+
+/* ---------- API ---------- */
+async function rpc(fn, args) {
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify(args),
+    });
+  } catch (e) {
+    throw new Error("network");
+  }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg = (body && body.message) || "error";
+    throw new Error(msg);
+  }
+  return body;
+}
+
+const ERRORS = {
+  bad_password: "Contraseña incorrecta. El Paje Mayor te vigila. 👀",
+  unknown_member: "No te encontramos en la lista. Vuelve a elegir tu nombre.",
+  empty_name: "Escribe el nombre del regalo.",
+  bad_link: "El enlace tiene que empezar por https://",
+  too_many_items: "Has llegado al máximo de regalos. Tampoco te pases. 😅",
+  network: "No hay conexión. Inténtalo de nuevo.",
+};
+const errText = (e) => ERRORS[e.message] || "Algo ha fallado. Inténtalo de nuevo.";
+
+const normPw = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, "");
+
+/* ---------- UI helpers ---------- */
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v);
+  }
+  for (const c of children.flat()) {
+    if (c == null || c === false) continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+function show(screen) {
+  for (const s of ["login", "who", "main"]) $("screen-" + s).hidden = s !== screen;
+  $("loading").hidden = true;
+}
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 3200);
+}
+function confirmBox(title, bodyNodes, okText = "Confirmar", okClass = "") {
+  return new Promise((resolve) => {
+    $("modal-title").textContent = title;
+    const body = $("modal-body"); body.replaceChildren(...bodyNodes);
+    const ok = $("modal-ok"); ok.textContent = okText; ok.className = "btn " + okClass;
+    $("modal").hidden = false;
+    const done = (v) => { $("modal").hidden = true; ok.onclick = null; $("modal-cancel").onclick = null; resolve(v); };
+    ok.onclick = () => done(true);
+    $("modal-cancel").onclick = () => done(false);
+  });
+}
+const safeLink = (url) => (typeof url === "string" && /^https?:\/\//i.test(url) ? url : null);
+function linkEl(url) {
+  const u = safeLink(url);
+  if (!u) return null;
+  let host = "";
+  try { host = new URL(u).hostname.replace(/^www\./, ""); } catch {}
+  return h("a", { class: "ilink", href: u, target: "_blank", rel: "noopener noreferrer" }, `Ver enlace${host ? " · " + host : ""} ↗`);
+}
+
+/* ---------- Flujo ---------- */
+async function start() {
+  if (!state.pw) return show("login");
+  try {
+    state.members = await rpc("buzon_login", { p: state.pw });
+  } catch (e) {
+    if (e.message === "bad_password") { store.del("pw"); state.pw = null; return show("login"); }
+    $("loading").textContent = errText(e); return;
+  }
+  fillWho();
+  if (state.me && state.members.some((m) => m.id === state.me.id)) return enterMain();
+  show("who");
+}
+
+$("form-login").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = ev.submitter || ev.target.querySelector("button");
+  btn.disabled = true; $("login-error").textContent = "";
+  const pw = normPw($("pw").value);
+  try {
+    state.members = await rpc("buzon_login", { p: pw });
+    state.pw = pw; store.set("pw", pw);
+    fillWho(); show("who");
+  } catch (e) {
+    $("login-error").textContent = errText(e);
+  } finally { btn.disabled = false; }
+});
+
+function fillWho() {
+  const sel = $("who");
+  sel.replaceChildren(h("option", { value: "" }, "Elige tu nombre…"),
+    ...state.members.map((m) => h("option", { value: m.id }, m.name)));
+}
+
+$("form-who").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const id = Number($("who").value);
+  const m = state.members.find((x) => x.id === id);
+  if (!m) return;
+  state.me = m; store.set("me", m);
+  state.tab = "others"; state.open = new Set();
+  enterMain();
+});
+
+$("btn-switch").addEventListener("click", () => {
+  state.me = null; state.board = null; store.del("me");
+  $("who").value = ""; show("who");
+});
+
+for (const t of ["others", "mine"]) {
+  $("tab-" + t).addEventListener("click", () => { state.tab = t; renderTabs(); });
+}
+function renderTabs() {
+  for (const t of ["others", "mine"]) {
+    $("tab-" + t).setAttribute("aria-selected", String(state.tab === t));
+    $("panel-" + t).hidden = state.tab !== t;
+  }
+}
+
+async function enterMain() {
+  $("hi").textContent = `Hola, ${state.me.name} 👋`;
+  renderTabs();
+  show("main");
+  $("others").replaceChildren(h("div", { class: "loading" }, "Abriendo cartas…"));
+  await refresh();
+}
+
+let refreshing = false;
+async function refresh() {
+  if (!state.me || refreshing) return;
+  refreshing = true;
+  try {
+    state.board = await rpc("buzon_board", { p: state.pw, me: state.me.id });
+    renderOthers(); renderMine();
+  } catch (e) {
+    if (e.message === "bad_password") { store.del("pw"); state.pw = null; show("login"); }
+    else if (e.message === "unknown_member") { store.del("me"); state.me = null; show("who"); }
+    else toast(errText(e));
+  } finally { refreshing = false; }
+}
+
+/* ---------- Cartas de los demás ---------- */
+function renderOthers() {
+  const people = state.board.others;
+  if (!people.length) { $("others").replaceChildren(h("div", { class: "loading" }, "Aún no hay nadie más.")); return; }
+  $("others").replaceChildren(...people.map((p) => {
+    const total = p.items.length;
+    const bought = p.items.filter((i) => i.bought).length;
+    const pct = total ? Math.round((bought / total) * 100) : 0;
+    const meta = total === 0 ? "Aún no ha escrito su carta"
+      : bought === total ? `¡Todo comprado! (${total})`
+      : `Faltan ${total - bought} de ${total}`;
+    const det = h("details", { class: "person" },
+      h("summary", {},
+        h("div", { class: "avatar" }, (p.name.trim()[0] || "?").toUpperCase()),
+        h("div", { class: "pinfo" },
+          h("div", { class: "pname" }, p.name),
+          h("div", { class: "pmeta" }, meta),
+          total ? h("div", { class: "bar" }, h("i", { style: `width:${pct}%` })) : null),
+        h("span", { class: "chev", "aria-hidden": "true" }, "›")),
+      total === 0
+        ? h("div", { class: "empty" }, "Todavía no ha apuntado nada. Toca darle un toque por el grupo. 🫠")
+        : h("ul", { class: "items" }, p.items.map((i) => itemRow(p, i))));
+    if (state.open.has(p.id)) det.open = true;
+    det.addEventListener("toggle", () => { det.open ? state.open.add(p.id) : state.open.delete(p.id); });
+    return det;
+  }));
+}
+
+function itemRow(person, i) {
+  let act;
+  if (i.by_me) {
+    act = h("div", { class: "act" },
+      h("span", { class: "pill mine" }, "✓ Lo compras tú"),
+      h("button", { class: "linkbtn", type: "button", onclick: () => unmark(person, i) }, "Desmarcar"));
+  } else if (i.bought) {
+    act = h("div", { class: "act" }, h("span", { class: "pill done" }, "✓ Ya comprado"));
+  } else {
+    act = h("div", { class: "act" },
+      h("button", { class: "btn small green", type: "button", onclick: () => mark(person, i) }, "Lo compro yo"));
+  }
+  return h("li", { class: "item" + (i.bought && !i.by_me ? " done" : "") },
+    h("div", { class: "txt" },
+      h("div", { class: "iname" }, i.name),
+      i.details ? h("div", { class: "idet" }, i.details) : null,
+      linkEl(i.link)),
+    act);
+}
+
+async function mark(person, i) {
+  const ok = await confirmBox("¿Lo compras tú?", [
+    h("p", {}, "Vas a regalar a ", h("b", {}, person.name), ":"),
+    h("div", { class: "preview" }, h("b", {}, i.name), i.details ? h("div", { class: "idet" }, i.details) : null),
+    h("p", {}, "Los demás lo verán como comprado (sin saber que eres tú). Si al final no lo regalas, acuérdate de desmarcarlo."),
+  ], "Sí, lo compro yo", "green");
+  if (!ok) return;
+  try {
+    const done = await rpc("buzon_mark", { p: state.pw, me: state.me.id, item_id: i.id });
+    toast(done ? "¡Apuntado! 🎁 Ya es tuyo." : "Vaya, alguien se te ha adelantado. 🏃");
+  } catch (e) { toast(errText(e)); }
+  refresh();
+}
+
+async function unmark(person, i) {
+  const ok = await confirmBox("¿Desmarcar este regalo?", [
+    h("div", { class: "preview" }, h("b", {}, i.name), h("div", { class: "idet" }, `Para ${person.name}`)),
+    h("p", {}, "Volverá a aparecer como pendiente y cualquiera podrá comprarlo."),
+  ], "Desmarcar");
+  if (!ok) return;
+  try {
+    const done = await rpc("buzon_unmark", { p: state.pw, me: state.me.id, item_id: i.id });
+    toast(done ? "Desmarcado. Vuelve a estar libre." : "No se ha podido desmarcar.");
+  } catch (e) { toast(errText(e)); }
+  refresh();
+}
+
+/* ---------- Mi carta ---------- */
+function renderMine() {
+  const mine = state.board.mine;
+  $("mine-count").textContent = mine.length ? `(${mine.length})` : "";
+  $("mine").replaceChildren(...(mine.length
+    ? mine.map((i) => h("li", { class: "item" },
+        h("div", { class: "txt" },
+          h("div", { class: "iname" }, i.name),
+          i.details ? h("div", { class: "idet" }, i.details) : null,
+          linkEl(i.link))))
+    : [h("li", { class: "empty", style: "padding:0" }, "Todavía no has añadido nada.")]));
+}
+
+$("form-add").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("add-error").textContent = "";
+  const name = $("f-name").value.trim();
+  const details = $("f-details").value.trim();
+  const link = $("f-link").value.trim();
+  if (!name) { $("add-error").textContent = ERRORS.empty_name; return; }
+  if (link && !safeLink(link)) { $("add-error").textContent = ERRORS.bad_link; return; }
+  const ok = await confirmBox("¿Añadir a tu carta?", [
+    h("div", { class: "preview" },
+      h("b", {}, name),
+      details ? h("div", { class: "idet" }, details) : null,
+      link ? h("div", { class: "idet", style: "word-break:break-all" }, link) : null),
+    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni editar."), " ¿Está todo bien?"),
+  ], "Sí, añadir");
+  if (!ok) return;
+  const btn = ev.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  try {
+    await rpc("buzon_add_item", { p: state.pw, me: state.me.id, item_name: name, item_details: details, item_link: link });
+    ev.target.reset();
+    toast("Añadido a tu carta ✍️");
+    await refresh();
+  } catch (e) {
+    $("add-error").textContent = errText(e);
+  } finally { btn.disabled = false; }
+});
+
+/* ---------- Refresco automático ---------- */
+setInterval(() => { if (!document.hidden && state.me && $("modal").hidden) refresh(); }, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && state.me) refresh(); });
+
+start();
+</script>
+</body>
+</html>
