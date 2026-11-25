@@ -105,6 +105,8 @@
 
   .mylist{list-style:none;margin:0;padding:0}
   .mylist .item{padding:12px 0}
+  .modal .fld{margin-top:10px}
+  .modal .fld label{margin:0 0 6px}
   .count{color:var(--muted);font-weight:500;font-size:15px}
 
   .loading{color:#c9d0f5;text-align:center;padding:30px 0}
@@ -175,9 +177,9 @@
 
     <div id="panel-mine" hidden>
       <div class="banner red">
-        <strong>⚠️ Solo se puede AÑADIR, nunca borrar</strong>
-        Lo que añadas a tu carta no se puede borrar ni editar, porque alguien podría habértelo comprado ya.
-        Revisa bien el nombre, los detalles y el enlace antes de añadir.
+        <strong>⚠️ Lo que añadas no se puede borrar</strong>
+        Alguien podría habértelo comprado ya, así que tampoco se puede cambiar el nombre del regalo.
+        Revisa bien el nombre antes de añadir. Los detalles y el enlace sí puedes editarlos después (por si encuentras una oferta mejor).
       </div>
       <div class="card">
         <h2>Añadir un regalo</h2>
@@ -477,8 +479,37 @@ function renderMine() {
         h("div", { class: "txt" },
           h("div", { class: "iname" }, i.name),
           i.details ? h("div", { class: "idet" }, i.details) : null,
-          linkEl(i.link))))
+          linkEl(i.link)),
+        h("div", { class: "act" },
+          h("button", { class: "btn small ghost", type: "button", onclick: () => editItem(i) }, "✏️ Editar"))))
     : [h("li", { class: "empty", style: "padding:0" }, "Todavía no has añadido nada.")]));
+}
+
+async function editItem(i) {
+  const det = h("input", { maxlength: "200", placeholder: "Ej.: Talla 43, en negro" });
+  det.value = i.details || "";
+  const lnk = h("input", { type: "url", inputmode: "url", maxlength: "800", placeholder: "https://…" });
+  lnk.value = i.link || "";
+  const err = h("p", { class: "error" });
+  const body = [
+    h("div", { class: "preview" }, h("b", {}, i.name), h("div", { class: "idet" }, "El nombre no se puede cambiar.")),
+    h("div", { class: "fld" }, h("label", {}, "Detalles ", h("span", { class: "opt" }, "(talla, color, modelo…)")), det),
+    h("div", { class: "fld" }, h("label", {}, "Enlace de referencia o de compra"), lnk),
+    err,
+  ];
+  // El modal se queda abierto mientras el enlace no sea válido
+  while (true) {
+    const ok = await confirmBox("Editar regalo", body, "Guardar");
+    if (!ok) return;
+    const link = lnk.value.trim();
+    if (link && !safeLink(link)) { err.textContent = ERRORS.bad_link; continue; }
+    try {
+      const done = await rpc("buzon_edit_item", { p: state.pw, me: state.me.id, item_id: i.id, item_details: det.value.trim(), item_link: link });
+      toast(done ? "Cambios guardados ✍️" : "No se ha podido guardar.");
+    } catch (e) { toast(errText(e)); }
+    refresh();
+    return;
+  }
 }
 
 $("form-add").addEventListener("submit", async (ev) => {
@@ -494,7 +525,7 @@ $("form-add").addEventListener("submit", async (ev) => {
       h("b", {}, name),
       details ? h("div", { class: "idet" }, details) : null,
       link ? h("div", { class: "idet", style: "word-break:break-all" }, link) : null),
-    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni editar."), " ¿Está todo bien?"),
+    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni cambiar el nombre."), " Los detalles y el enlace sí podrás editarlos. ¿Está todo bien?"),
   ], "Sí, añadir");
   if (!ok) return;
   const btn = ev.target.querySelector("button[type=submit]");

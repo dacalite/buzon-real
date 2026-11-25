@@ -109,7 +109,7 @@ begin
   );
 end $$;
 
--- Añadir un regalo a MI carta. No existe función para borrar ni editar.
+-- Añadir un regalo a MI carta. No existe función para borrar ni para cambiar el nombre.
 create or replace function public.buzon_add_item(p text, me int, item_name text, item_details text, item_link text)
 returns json
 language plpgsql security definer
@@ -158,11 +158,29 @@ begin
   return found;
 end $$;
 
+-- Editar detalles y enlace de un regalo de MI carta. El nombre no se puede cambiar.
+create or replace function public.buzon_edit_item(p text, me int, item_id bigint, item_details text, item_link text)
+returns boolean
+language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare
+  d text := nullif(btrim(item_details), '');
+  l text := nullif(btrim(item_link), '');
+begin
+  perform _buzon_check(p, me);
+  if l is not null and l !~* '^https?://' then raise exception 'bad_link'; end if;
+  update items set details = d, link = l
+   where id = item_id and owner_id = me;
+  return found;
+end $$;
+
 grant execute on function public.buzon_login(text)                         to anon;
 grant execute on function public.buzon_board(text, int)                    to anon;
 grant execute on function public.buzon_add_item(text, int, text, text, text) to anon;
 grant execute on function public.buzon_mark(text, int, bigint)             to anon;
 grant execute on function public.buzon_unmark(text, int, bigint)           to anon;
+grant execute on function public.buzon_edit_item(text, int, bigint, text, text) to anon;
 
 -- ---------- Datos iniciales (EDITA ESTO) ------------------------------
 
