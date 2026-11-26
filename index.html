@@ -106,6 +106,21 @@
   .mylist{list-style:none;margin:0;padding:0}
   .mylist .item{padding:12px 0}
   .modal .fld{margin-top:10px}
+  .modal{max-height:92vh;overflow:auto}
+  .ilinks{display:flex;flex-wrap:wrap;gap:4px 16px}
+  .photobtn{background:none;border:0;padding:0;margin-top:5px;font:inherit;font-size:14px;font-weight:600;color:var(--navy-2);cursor:pointer}
+  .photobtn:hover{text-decoration:underline}
+  .photo-pick{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .photo-pick .thumb{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1.5px solid var(--line);background:#fff}
+  .photo-btns{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+  .photo-btns .linkbtn{color:var(--muted);padding:0;font-size:14px}
+  .preview img{display:block;max-width:100%;max-height:180px;border-radius:10px;margin-top:8px}
+  .lightbox{position:fixed;inset:0;background:#0a0f2ef2;display:grid;place-items:center;padding:16px;z-index:25}
+  .lightbox figure{margin:0;max-width:600px;width:100%;text-align:center;color:#fff}
+  .lightbox img{max-width:100%;max-height:72vh;border-radius:12px;background:#fff}
+  .lightbox figcaption{font-weight:700;font-size:17px;margin:12px 0 4px}
+  .lightbox p{color:#c9d0f5;margin:6px 0 14px}
+  .lightbox .btn{max-width:220px}
   .modal .fld label{margin:0 0 6px}
   .count{color:var(--muted);font-weight:500;font-size:15px}
 
@@ -179,7 +194,7 @@
       <div class="banner red">
         <strong>⚠️ Lo que añadas no se puede borrar</strong>
         Alguien podría habértelo comprado ya, así que tampoco se puede cambiar el nombre del regalo.
-        Revisa bien el nombre antes de añadir. Los detalles y el enlace sí puedes editarlos después (por si encuentras una oferta mejor).
+        Revisa bien el nombre antes de añadir. Los detalles, el enlace y la foto sí puedes editarlos después (por si encuentras una oferta mejor).
       </div>
       <div class="card">
         <h2>Añadir un regalo</h2>
@@ -190,6 +205,8 @@
           <input id="f-details" maxlength="200" placeholder="Ej.: Talla 43, en negro">
           <label for="f-link">Enlace de referencia o de compra <span class="opt">(opcional)</span></label>
           <input id="f-link" type="url" inputmode="url" maxlength="800" placeholder="https://…">
+          <label>Foto <span class="opt">(opcional: útil si no hay enlace, p. ej. algo de una tienda física)</span></label>
+          <div id="f-photo"></div>
           <button class="btn" type="submit">Añadir a mi carta</button>
           <p class="error" id="add-error"></p>
         </form>
@@ -215,6 +232,14 @@
       <button class="btn" id="modal-ok" type="button">Confirmar</button>
     </div>
   </div>
+</div>
+<div id="lightbox" class="lightbox" hidden>
+  <figure>
+    <img id="lightbox-img" alt="Foto del regalo">
+    <figcaption id="lightbox-cap"></figcaption>
+    <p id="lightbox-msg"></p>
+    <button class="btn ghost" id="lightbox-close" type="button">Cerrar</button>
+  </figure>
 </div>
 <div id="toast" class="toast" hidden></div>
 
@@ -263,6 +288,8 @@ const ERRORS = {
   bad_link: "El enlace tiene que empezar por https://",
   too_many_items: "Has llegado al máximo de regalos. Tampoco te pases. 😅",
   network: "No hay conexión. Inténtalo de nuevo.",
+  photo_too_big: "La foto es demasiado grande. Prueba con otra.",
+  bad_photo: "Ese archivo no parece una foto.",
 };
 const errText = (e) => ERRORS[e.message] || "Algo ha fallado. Inténtalo de nuevo.";
 
@@ -313,6 +340,93 @@ function linkEl(url) {
   try { host = new URL(u).hostname.replace(/^www\./, ""); } catch {}
   return h("a", { class: "ilink", href: u, target: "_blank", rel: "noopener noreferrer" }, `Ver enlace${host ? " · " + host : ""} ↗`);
 }
+
+/* ---------- Fotos ---------- */
+const isPhotoData = (s) => typeof s === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(s);
+
+// Reduce la foto del móvil a ~1280px en JPEG para que pese poco (≈150–400 KB).
+async function compressImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
+    });
+    let max = 1280, q = 0.78, out = "";
+    for (let t = 0; t < 6; t++) {
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.naturalWidth * s));
+      c.height = Math.max(1, Math.round(img.naturalHeight * s));
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      out = c.toDataURL("image/jpeg", q);
+      if (out.length <= 600000) return out;
+      max = Math.round(max * 0.8); q = Math.max(0.5, q - 0.08);
+    }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+
+// Selector de foto reutilizable. value: undefined = sin cambios, null = quitar, string = nueva foto.
+function photoPicker() {
+  let value;
+  const input = h("input", { type: "file", accept: "image/*", hidden: true });
+  const img = h("img", { class: "thumb", alt: "Foto del regalo" });
+  const pick = h("button", { type: "button", class: "btn small ghost" });
+  const rm = h("button", { type: "button", class: "linkbtn" }, "Quitar foto");
+  const status = h("span", { class: "idet" });
+  const el = h("div", { class: "photo-pick" }, img, h("div", { class: "photo-btns" }, pick, rm, status), input);
+  const show = (src) => {
+    if (src) { img.src = src; img.hidden = false; pick.textContent = "📷 Cambiar foto"; rm.hidden = false; }
+    else { img.removeAttribute("src"); img.hidden = true; pick.textContent = "📷 Añadir foto"; rm.hidden = true; }
+  };
+  pick.addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
+    const f = input.files && input.files[0]; input.value = "";
+    if (!f) return;
+    status.textContent = "Preparando foto…";
+    try { value = await compressImage(f); show(value); status.textContent = ""; }
+    catch { status.textContent = "No se ha podido leer la foto. Prueba con otra."; }
+  });
+  rm.addEventListener("click", () => { value = null; show(null); });
+  show(null);
+  return {
+    el,
+    get value() { return value; },
+    reset() { value = undefined; status.textContent = ""; show(null); },
+    showCurrent(src) { if (value === undefined && isPhotoData(src)) show(src); },
+  };
+}
+
+const photoCache = new Map();
+function getPhoto(i) {
+  const k = i.id + ":" + i.photo;
+  if (!photoCache.has(k)) {
+    photoCache.set(k, rpc("buzon_photo", { p: state.pw, me: state.me.id, photo_item_id: i.id })
+      .catch((e) => { photoCache.delete(k); throw e; }));
+  }
+  return photoCache.get(k);
+}
+async function openPhoto(i) {
+  const img = $("lightbox-img");
+  img.removeAttribute("src"); img.hidden = true;
+  $("lightbox-cap").textContent = i.name;
+  $("lightbox-msg").textContent = "Cargando foto…";
+  $("lightbox").hidden = false;
+  try {
+    const src = await getPhoto(i);
+    if (isPhotoData(src)) { img.src = src; img.hidden = false; $("lightbox-msg").textContent = ""; }
+    else $("lightbox-msg").textContent = "Esta foto ya no está disponible.";
+  } catch (e) { $("lightbox-msg").textContent = errText(e); }
+}
+$("lightbox-close").addEventListener("click", () => ($("lightbox").hidden = true));
+$("lightbox").addEventListener("click", (ev) => { if (ev.target.id === "lightbox") $("lightbox").hidden = true; });
+const photoBtn = (i) => i.photo ? h("button", { class: "photobtn", type: "button", onclick: () => openPhoto(i) }, "📷 Ver foto") : null;
+const itemLinks = (i) => (i.link || i.photo) ? h("div", { class: "ilinks" }, linkEl(i.link), photoBtn(i)) : null;
+
+const addPhoto = photoPicker();
+$("f-photo").append(addPhoto.el);
 
 /* ---------- Flujo ---------- */
 async function start() {
@@ -439,7 +553,7 @@ function itemRow(person, i) {
     h("div", { class: "txt" },
       h("div", { class: "iname" }, i.name),
       i.details ? h("div", { class: "idet" }, i.details) : null,
-      linkEl(i.link)),
+      itemLinks(i)),
     act);
 }
 
@@ -479,7 +593,7 @@ function renderMine() {
         h("div", { class: "txt" },
           h("div", { class: "iname" }, i.name),
           i.details ? h("div", { class: "idet" }, i.details) : null,
-          linkEl(i.link)),
+          itemLinks(i)),
         h("div", { class: "act" },
           h("button", { class: "btn small ghost", type: "button", onclick: () => editItem(i) }, "✏️ Editar"))))
     : [h("li", { class: "empty", style: "padding:0" }, "Todavía no has añadido nada.")]));
@@ -491,10 +605,13 @@ async function editItem(i) {
   const lnk = h("input", { type: "url", inputmode: "url", maxlength: "800", placeholder: "https://…" });
   lnk.value = i.link || "";
   const err = h("p", { class: "error" });
+  const pic = photoPicker();
+  if (i.photo) getPhoto(i).then((src) => pic.showCurrent(src)).catch(() => {});
   const body = [
     h("div", { class: "preview" }, h("b", {}, i.name), h("div", { class: "idet" }, "El nombre no se puede cambiar.")),
     h("div", { class: "fld" }, h("label", {}, "Detalles ", h("span", { class: "opt" }, "(talla, color, modelo…)")), det),
     h("div", { class: "fld" }, h("label", {}, "Enlace de referencia o de compra"), lnk),
+    h("div", { class: "fld" }, h("label", {}, "Foto ", h("span", { class: "opt" }, "(opcional)")), pic.el),
     err,
   ];
   // El modal se queda abierto mientras el enlace no sea válido
@@ -503,8 +620,12 @@ async function editItem(i) {
     if (!ok) return;
     const link = lnk.value.trim();
     if (link && !safeLink(link)) { err.textContent = ERRORS.bad_link; continue; }
+    toast("Guardando…");
     try {
-      const done = await rpc("buzon_edit_item", { p: state.pw, me: state.me.id, item_id: i.id, item_details: det.value.trim(), item_link: link });
+      let done = await rpc("buzon_edit_item", { p: state.pw, me: state.me.id, item_id: i.id, item_details: det.value.trim(), item_link: link });
+      if (done && pic.value !== undefined) {
+        done = await rpc("buzon_set_photo", { p: state.pw, me: state.me.id, photo_item_id: i.id, photo: pic.value });
+      }
       toast(done ? "Cambios guardados ✍️" : "No se ha podido guardar.");
     } catch (e) { toast(errText(e)); }
     refresh();
@@ -520,20 +641,28 @@ $("form-add").addEventListener("submit", async (ev) => {
   const link = $("f-link").value.trim();
   if (!name) { $("add-error").textContent = ERRORS.empty_name; return; }
   if (link && !safeLink(link)) { $("add-error").textContent = ERRORS.bad_link; return; }
+  const photo = isPhotoData(addPhoto.value) ? addPhoto.value : null;
   const ok = await confirmBox("¿Añadir a tu carta?", [
     h("div", { class: "preview" },
       h("b", {}, name),
       details ? h("div", { class: "idet" }, details) : null,
-      link ? h("div", { class: "idet", style: "word-break:break-all" }, link) : null),
-    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni cambiar el nombre."), " Los detalles y el enlace sí podrás editarlos. ¿Está todo bien?"),
+      link ? h("div", { class: "idet", style: "word-break:break-all" }, link) : null,
+      photo ? h("img", { src: photo, alt: "Foto del regalo" }) : null),
+    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni cambiar el nombre."), " Los detalles, el enlace y la foto sí podrás editarlos. ¿Está todo bien?"),
   ], "Sí, añadir");
   if (!ok) return;
   const btn = ev.target.querySelector("button[type=submit]");
   btn.disabled = true;
   try {
-    await rpc("buzon_add_item", { p: state.pw, me: state.me.id, item_name: name, item_details: details, item_link: link });
+    const created = await rpc("buzon_add_item", { p: state.pw, me: state.me.id, item_name: name, item_details: details, item_link: link });
     ev.target.reset();
-    toast("Añadido a tu carta ✍️");
+    addPhoto.reset();
+    let msg = "Añadido a tu carta ✍️";
+    if (photo && created && created.id) {
+      try { await rpc("buzon_set_photo", { p: state.pw, me: state.me.id, photo_item_id: created.id, photo }); }
+      catch (e) { msg = "Regalo añadido, pero la foto no se subió. Pruébalo desde ✏️ Editar."; }
+    }
+    toast(msg);
     await refresh();
   } catch (e) {
     $("add-error").textContent = errText(e);
