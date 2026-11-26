@@ -110,17 +110,25 @@
   .ilinks{display:flex;flex-wrap:wrap;gap:4px 16px}
   .photobtn{background:none;border:0;padding:0;margin-top:5px;font:inherit;font-size:14px;font-weight:600;color:var(--navy-2);cursor:pointer}
   .photobtn:hover{text-decoration:underline}
-  .photo-pick{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .photo-pick .thumb{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1.5px solid var(--line);background:#fff}
-  .photo-btns{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
-  .photo-btns .linkbtn{color:var(--muted);padding:0;font-size:14px}
-  .preview img{display:block;max-width:100%;max-height:180px;border-radius:10px;margin-top:8px}
+  .photos-pick .thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+  .photos-pick .thumbs:empty{display:none}
+  .tw{position:relative;width:72px;height:72px}
+  .tw img{width:72px;height:72px;object-fit:cover;border-radius:10px;border:1.5px solid var(--line);background:#eee;display:block}
+  .tw .x{position:absolute;top:-7px;right:-7px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;
+    background:var(--ink);color:#fff;font-size:13px;font-weight:700;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+  .photos-pick .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .preview .thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .preview .thumbs img{width:60px;height:60px;object-fit:cover;border-radius:8px}
   .lightbox{position:fixed;inset:0;background:#0a0f2ef2;display:grid;place-items:center;padding:16px;z-index:25}
   .lightbox figure{margin:0;max-width:600px;width:100%;text-align:center;color:#fff}
   .lightbox img{max-width:100%;max-height:72vh;border-radius:12px;background:#fff}
   .lightbox figcaption{font-weight:700;font-size:17px;margin:12px 0 4px}
   .lightbox p{color:#c9d0f5;margin:6px 0 14px}
   .lightbox .btn{max-width:220px}
+  .lb-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:120px}
+  .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;
+    background:#ffffffe6;color:var(--ink);font-size:24px;font-weight:700;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px #0006}
+  .lb-nav.prev{left:6px} .lb-nav.next{right:6px}
   .modal .fld label{margin:0 0 6px}
   .count{color:var(--muted);font-weight:500;font-size:15px}
 
@@ -194,7 +202,7 @@
       <div class="banner red">
         <strong>⚠️ Lo que añadas no se puede borrar</strong>
         Alguien podría habértelo comprado ya, así que tampoco se puede cambiar el nombre del regalo.
-        Revisa bien el nombre antes de añadir. Los detalles, el enlace y la foto sí puedes editarlos después (por si encuentras una oferta mejor).
+        Revisa bien el nombre antes de añadir. Los detalles, el enlace y las fotos sí puedes editarlos después (por si encuentras una oferta mejor).
       </div>
       <div class="card">
         <h2>Añadir un regalo</h2>
@@ -205,7 +213,7 @@
           <input id="f-details" maxlength="200" placeholder="Ej.: Talla 43, en negro">
           <label for="f-link">Enlace de referencia o de compra <span class="opt">(opcional)</span></label>
           <input id="f-link" type="url" inputmode="url" maxlength="800" placeholder="https://…">
-          <label>Foto <span class="opt">(opcional: útil si no hay enlace, p. ej. algo de una tienda física)</span></label>
+          <label>Fotos <span class="opt">(opcional, hasta 5: útil si no hay enlace, p. ej. algo de una tienda física)</span></label>
           <div id="f-photo"></div>
           <button class="btn" type="submit">Añadir a mi carta</button>
           <p class="error" id="add-error"></p>
@@ -235,7 +243,11 @@
 </div>
 <div id="lightbox" class="lightbox" hidden>
   <figure>
-    <img id="lightbox-img" alt="Foto del regalo">
+    <div class="lb-stage">
+      <button class="lb-nav prev" id="lb-prev" type="button" aria-label="Foto anterior">‹</button>
+      <img id="lightbox-img" alt="Foto del regalo">
+      <button class="lb-nav next" id="lb-next" type="button" aria-label="Foto siguiente">›</button>
+    </div>
     <figcaption id="lightbox-cap"></figcaption>
     <p id="lightbox-msg"></p>
     <button class="btn ghost" id="lightbox-close" type="button">Cerrar</button>
@@ -287,6 +299,8 @@ const ERRORS = {
   empty_name: "Escribe el nombre del regalo.",
   bad_link: "El enlace tiene que empezar por https://",
   too_many_items: "Has llegado al máximo de regalos. Tampoco te pases. 😅",
+  too_many_photos: "Ese regalo ya tiene 5 fotos.",
+  not_owner: "Solo puedes cambiar las fotos de tus propios regalos.",
   network: "No hay conexión. Inténtalo de nuevo.",
   photo_too_big: "La foto es demasiado grande. Prueba con otra.",
   bad_photo: "Ese archivo no parece una foto.",
@@ -342,7 +356,9 @@ function linkEl(url) {
 }
 
 /* ---------- Fotos ---------- */
+const MAX_PHOTOS = 5;
 const isPhotoData = (s) => typeof s === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(s);
+const photoIds = (i) => Array.isArray(i.photos) ? i.photos : (i.photo ? [i.photo] : []);
 
 // Reduce la foto del móvil a ~1280px en JPEG para que pese poco (≈150–400 KB).
 async function compressImage(file) {
@@ -368,65 +384,123 @@ async function compressImage(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-// Selector de foto reutilizable. value: undefined = sin cambios, null = quitar, string = nueva foto.
-function photoPicker() {
-  let value;
-  const input = h("input", { type: "file", accept: "image/*", hidden: true });
-  const img = h("img", { class: "thumb", alt: "Foto del regalo" });
+const photoCache = new Map();
+function getPhotoById(id) {
+  if (!photoCache.has(id)) {
+    photoCache.set(id, rpc("buzon_photo_get", { p: state.pw, me: state.me.id, photo_id: id })
+      .catch((e) => { photoCache.delete(id); throw e; }));
+  }
+  return photoCache.get(id);
+}
+
+// Selector de varias fotos. Guarda las fotos nuevas y las existentes que se quitan.
+function photosPicker(existingIds = []) {
+  let items = existingIds.map((id) => ({ id }));   // {id} = ya subida, {data} = nueva
+  const removed = [];
+  const input = h("input", { type: "file", accept: "image/*", multiple: true, hidden: true });
+  const thumbs = h("div", { class: "thumbs" });
   const pick = h("button", { type: "button", class: "btn small ghost" });
-  const rm = h("button", { type: "button", class: "linkbtn" }, "Quitar foto");
   const status = h("span", { class: "idet" });
-  const el = h("div", { class: "photo-pick" }, img, h("div", { class: "photo-btns" }, pick, rm, status), input);
-  const show = (src) => {
-    if (src) { img.src = src; img.hidden = false; pick.textContent = "📷 Cambiar foto"; rm.hidden = false; }
-    else { img.removeAttribute("src"); img.hidden = true; pick.textContent = "📷 Añadir foto"; rm.hidden = true; }
-  };
+  const el = h("div", { class: "photos-pick" }, thumbs, h("div", { class: "row" }, pick, status), input);
+  function render() {
+    thumbs.replaceChildren(...items.map((it, idx) => {
+      const img = h("img", { alt: `Foto ${idx + 1}` });
+      if (it.data) img.src = it.data;
+      else getPhotoById(it.id).then((src) => { if (isPhotoData(src)) img.src = src; }).catch(() => {});
+      const x = h("button", { type: "button", class: "x", "aria-label": "Quitar foto", onclick: () => {
+        if (it.id) removed.push(it.id);
+        items = items.filter((o) => o !== it); status.textContent = ""; render();
+      } }, "✕");
+      return h("div", { class: "tw" }, img, x);
+    }));
+    const n = items.length;
+    pick.hidden = n >= MAX_PHOTOS;
+    pick.textContent = n ? `📷 Añadir otra (${n}/${MAX_PHOTOS})` : "📷 Añadir fotos";
+  }
   pick.addEventListener("click", () => input.click());
   input.addEventListener("change", async () => {
-    const f = input.files && input.files[0]; input.value = "";
-    if (!f) return;
-    status.textContent = "Preparando foto…";
-    try { value = await compressImage(f); show(value); status.textContent = ""; }
-    catch { status.textContent = "No se ha podido leer la foto. Prueba con otra."; }
+    const files = Array.from(input.files || []); input.value = "";
+    if (!files.length) return;
+    const room = MAX_PHOTOS - items.length;
+    const take = files.slice(0, room);
+    status.textContent = "Preparando fotos…";
+    let failed = 0;
+    for (const f of take) {
+      try { items.push({ data: await compressImage(f) }); render(); }
+      catch { failed++; }
+    }
+    status.textContent =
+      files.length > room ? `Caben ${MAX_PHOTOS} fotos como máximo: se han añadido ${take.length - failed}.` :
+      failed ? "Alguna foto no se ha podido leer. Prueba con otra." : "";
   });
-  rm.addEventListener("click", () => { value = null; show(null); });
-  show(null);
+  render();
   return {
     el,
-    get value() { return value; },
-    reset() { value = undefined; status.textContent = ""; show(null); },
-    showCurrent(src) { if (value === undefined && isPhotoData(src)) show(src); },
+    get newPhotos() { return items.filter((it) => it.data).map((it) => it.data); },
+    get removedIds() { return removed.slice(); },
+    reset() { items = []; removed.length = 0; status.textContent = ""; render(); },
   };
 }
 
-const photoCache = new Map();
-function getPhoto(i) {
-  const k = i.id + ":" + i.photo;
-  if (!photoCache.has(k)) {
-    photoCache.set(k, rpc("buzon_photo", { p: state.pw, me: state.me.id, photo_item_id: i.id })
-      .catch((e) => { photoCache.delete(k); throw e; }));
-  }
-  return photoCache.get(k);
-}
-async function openPhoto(i) {
-  const img = $("lightbox-img");
+// Visor de fotos con flechas y deslizamiento.
+const lb = { item: null, ids: [], idx: 0 };
+async function showLb() {
+  const img = $("lightbox-img"), id = lb.ids[lb.idx];
   img.removeAttribute("src"); img.hidden = true;
-  $("lightbox-cap").textContent = i.name;
+  const n = lb.ids.length;
+  $("lightbox-cap").textContent = n > 1 ? `${lb.item.name} · ${lb.idx + 1}/${n}` : lb.item.name;
+  $("lb-prev").hidden = $("lb-next").hidden = n < 2;
   $("lightbox-msg").textContent = "Cargando foto…";
-  $("lightbox").hidden = false;
   try {
-    const src = await getPhoto(i);
+    const src = await getPhotoById(id);
+    if (lb.ids[lb.idx] !== id) return; // se cambió de foto mientras cargaba
     if (isPhotoData(src)) { img.src = src; img.hidden = false; $("lightbox-msg").textContent = ""; }
     else $("lightbox-msg").textContent = "Esta foto ya no está disponible.";
   } catch (e) { $("lightbox-msg").textContent = errText(e); }
 }
+function openPhotos(i) {
+  lb.item = i; lb.ids = photoIds(i); lb.idx = 0;
+  if (!lb.ids.length) return;
+  $("lightbox").hidden = false; showLb();
+}
+const lbMove = (d) => { if (lb.ids.length < 2) return; lb.idx = (lb.idx + d + lb.ids.length) % lb.ids.length; showLb(); };
+$("lb-prev").addEventListener("click", () => lbMove(-1));
+$("lb-next").addEventListener("click", () => lbMove(1));
 $("lightbox-close").addEventListener("click", () => ($("lightbox").hidden = true));
 $("lightbox").addEventListener("click", (ev) => { if (ev.target.id === "lightbox") $("lightbox").hidden = true; });
-const photoBtn = (i) => i.photo ? h("button", { class: "photobtn", type: "button", onclick: () => openPhoto(i) }, "📷 Ver foto") : null;
-const itemLinks = (i) => (i.link || i.photo) ? h("div", { class: "ilinks" }, linkEl(i.link), photoBtn(i)) : null;
+let touchX = null;
+$("lightbox").addEventListener("touchstart", (ev) => { touchX = ev.touches[0].clientX; }, { passive: true });
+$("lightbox").addEventListener("touchend", (ev) => {
+  if (touchX == null) return;
+  const dx = ev.changedTouches[0].clientX - touchX; touchX = null;
+  if (Math.abs(dx) > 40) lbMove(dx < 0 ? 1 : -1);
+});
+document.addEventListener("keydown", (ev) => {
+  if ($("lightbox").hidden) return;
+  if (ev.key === "ArrowRight") lbMove(1); else if (ev.key === "ArrowLeft") lbMove(-1);
+  else if (ev.key === "Escape") $("lightbox").hidden = true;
+});
 
-const addPhoto = photoPicker();
-$("f-photo").append(addPhoto.el);
+const photoBtn = (i) => {
+  const n = photoIds(i).length;
+  return n ? h("button", { class: "photobtn", type: "button", onclick: () => openPhotos(i) }, n > 1 ? `📷 Ver fotos (${n})` : "📷 Ver foto") : null;
+};
+const itemLinks = (i) => (i.link || photoIds(i).length) ? h("div", { class: "ilinks" }, linkEl(i.link), photoBtn(i)) : null;
+
+// Sube fotos nuevas y quita las marcadas. Devuelve cuántas operaciones fallaron.
+async function syncPhotos(itemId, newPhotos, removedIds) {
+  let failed = 0;
+  for (const id of removedIds) {
+    try { await rpc("buzon_photo_delete", { p: state.pw, me: state.me.id, photo_id: id }); } catch { failed++; }
+  }
+  for (const photo of newPhotos) {
+    try { await rpc("buzon_photo_add", { p: state.pw, me: state.me.id, photo_item_id: itemId, photo }); } catch { failed++; }
+  }
+  return failed;
+}
+
+const addPhotos = photosPicker();
+$("f-photo").append(addPhotos.el);
 
 /* ---------- Flujo ---------- */
 async function start() {
@@ -605,13 +679,12 @@ async function editItem(i) {
   const lnk = h("input", { type: "url", inputmode: "url", maxlength: "800", placeholder: "https://…" });
   lnk.value = i.link || "";
   const err = h("p", { class: "error" });
-  const pic = photoPicker();
-  if (i.photo) getPhoto(i).then((src) => pic.showCurrent(src)).catch(() => {});
+  const pic = photosPicker(photoIds(i));
   const body = [
     h("div", { class: "preview" }, h("b", {}, i.name), h("div", { class: "idet" }, "El nombre no se puede cambiar.")),
     h("div", { class: "fld" }, h("label", {}, "Detalles ", h("span", { class: "opt" }, "(talla, color, modelo…)")), det),
     h("div", { class: "fld" }, h("label", {}, "Enlace de referencia o de compra"), lnk),
-    h("div", { class: "fld" }, h("label", {}, "Foto ", h("span", { class: "opt" }, "(opcional)")), pic.el),
+    h("div", { class: "fld" }, h("label", {}, "Fotos ", h("span", { class: "opt" }, `(opcional, hasta ${MAX_PHOTOS})`)), pic.el),
     err,
   ];
   // El modal se queda abierto mientras el enlace no sea válido
@@ -623,10 +696,9 @@ async function editItem(i) {
     toast("Guardando…");
     try {
       let done = await rpc("buzon_edit_item", { p: state.pw, me: state.me.id, item_id: i.id, item_details: det.value.trim(), item_link: link });
-      if (done && pic.value !== undefined) {
-        done = await rpc("buzon_set_photo", { p: state.pw, me: state.me.id, photo_item_id: i.id, photo: pic.value });
-      }
-      toast(done ? "Cambios guardados ✍️" : "No se ha podido guardar.");
+      let failed = 0;
+      if (done) failed = await syncPhotos(i.id, pic.newPhotos, pic.removedIds);
+      toast(!done ? "No se ha podido guardar." : failed ? "Guardado, pero alguna foto no se pudo actualizar." : "Cambios guardados ✍️");
     } catch (e) { toast(errText(e)); }
     refresh();
     return;
@@ -641,14 +713,14 @@ $("form-add").addEventListener("submit", async (ev) => {
   const link = $("f-link").value.trim();
   if (!name) { $("add-error").textContent = ERRORS.empty_name; return; }
   if (link && !safeLink(link)) { $("add-error").textContent = ERRORS.bad_link; return; }
-  const photo = isPhotoData(addPhoto.value) ? addPhoto.value : null;
+  const photos = addPhotos.newPhotos;
   const ok = await confirmBox("¿Añadir a tu carta?", [
     h("div", { class: "preview" },
       h("b", {}, name),
       details ? h("div", { class: "idet" }, details) : null,
       link ? h("div", { class: "idet", style: "word-break:break-all" }, link) : null,
-      photo ? h("img", { src: photo, alt: "Foto del regalo" }) : null),
-    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni cambiar el nombre."), " Los detalles, el enlace y la foto sí podrás editarlos. ¿Está todo bien?"),
+      photos.length ? h("div", { class: "thumbs" }, photos.map((src, k) => h("img", { src, alt: `Foto ${k + 1}` }))) : null),
+    h("p", {}, h("b", {}, "Una vez añadido no se puede borrar ni cambiar el nombre."), " Los detalles, el enlace y las fotos sí podrás editarlos. ¿Está todo bien?"),
   ], "Sí, añadir");
   if (!ok) return;
   const btn = ev.target.querySelector("button[type=submit]");
@@ -656,11 +728,12 @@ $("form-add").addEventListener("submit", async (ev) => {
   try {
     const created = await rpc("buzon_add_item", { p: state.pw, me: state.me.id, item_name: name, item_details: details, item_link: link });
     ev.target.reset();
-    addPhoto.reset();
+    addPhotos.reset();
     let msg = "Añadido a tu carta ✍️";
-    if (photo && created && created.id) {
-      try { await rpc("buzon_set_photo", { p: state.pw, me: state.me.id, photo_item_id: created.id, photo }); }
-      catch (e) { msg = "Regalo añadido, pero la foto no se subió. Pruébalo desde ✏️ Editar."; }
+    if (photos.length && created && created.id) {
+      if (photos.length > 1) toast("Subiendo fotos…");
+      const failed = await syncPhotos(created.id, photos, []);
+      if (failed) msg = "Regalo añadido, pero alguna foto no se subió. Pruébalo desde ✏️ Editar.";
     }
     toast(msg);
     await refresh();
