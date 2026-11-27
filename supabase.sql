@@ -30,8 +30,9 @@ create table if not exists public.items (
   link        text check (link is null or (char_length(link) <= 800 and link ~* '^https?://')),
   bought_by   int  references public.members(id),
   bought_at   timestamptz,
-  created_at  timestamptz not null default now(),
-  check (bought_by is null or bought_by <> owner_id)
+  created_at  timestamptz not null default now()
+  -- bought_by puede ser el propio dueño si se lo compra él mismo (solo desde la BD);
+  -- desde la web nadie puede marcar sus propios regalos (buzon_mark exige owner_id <> me).
 );
 
 create index if not exists items_owner_idx on public.items(owner_id);
